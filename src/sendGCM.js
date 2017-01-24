@@ -61,12 +61,31 @@ module.exports = (regIds, data, settings) => {
         };
     }
 
-    custom.title = custom.title || data.title || '';
-    custom.message = custom.message || data.body || '';
     custom.sound = custom.sound || data.sound || undefined;
     custom.icon = custom.icon || data.icon || undefined;
     custom.msgcnt = custom.msgcnt || data.badge || undefined;
 
+    const notification = {
+        icon: data.icon, // Android
+        sound: data.sound, // Android, iOS
+        badge: data.badge, // iOS
+        tag: data.tag, // Android
+        color: data.color, // Android
+        click_action: data.clickAction || data.category, // Android, iOS
+        body_loc_key: data.locKey, // Android, iOS
+        body_loc_args: data.locArgs, // Android, iOS
+        title_loc_key: data.titleLocKey, // Android, iOS
+        title_loc_args: data.titleLocArgs, // Android, iOS
+    };
+
+    if (data.title) {
+        custom.title = data.title;
+        notification.title = data.title;
+    }
+    if (data.body) {
+        custom.message = data.body;
+        notification.body = data.body;
+    }
     const message = new gcm.Message({ // See https://developers.google.com/cloud-messaging/http-server-ref#table5
         collapseKey: data.collapseKey,
         priority: data.priority,
@@ -76,20 +95,7 @@ module.exports = (regIds, data, settings) => {
         restrictedPackageName: data.restrictedPackageName,
         dryRun: data.dryRun || false,
         data: custom,
-        notification: {
-            title: data.title, // Android, iOS (Watch)
-            body: data.body, // Android, iOS
-            icon: data.icon, // Android
-            sound: data.sound, // Android, iOS
-            badge: data.badge, // iOS
-            tag: data.tag, // Android
-            color: data.color, // Android
-            click_action: data.clickAction || data.category, // Android, iOS
-            body_loc_key: data.locKey, // Android, iOS
-            body_loc_args: data.locArgs, // Android, iOS
-            title_loc_key: data.titleLocKey, // Android, iOS
-            title_loc_args: data.titleLocArgs, // Android, iOS
-        },
+        notification,
     });
     let chunk = 0;
 
@@ -101,22 +107,22 @@ module.exports = (regIds, data, settings) => {
     } while (1000 * chunk < regIds.length);
 
     return Promise.all(promises)
-        .then((results) => {
-            const resumed = {
-                method,
-                multicastId: [],
-                success: 0,
-                failure: 0,
-                message: [],
-            };
-            for (const result of results) {
-                if (result.multicastId) {
-                    resumed.multicastId.push(result.multicastId);
-                }
-                resumed.success += result.success;
-                resumed.failure += result.failure;
-                resumed.message = [...resumed.message, ...result.message];
-            }
-            return resumed;
-        });
+      .then((results) => {
+          const resumed = {
+              method,
+              multicastId: [],
+              success: 0,
+              failure: 0,
+              message: [],
+          };
+          for (const result of results) {
+              if (result.multicastId) {
+                  resumed.multicastId.push(result.multicastId);
+              }
+              resumed.success += result.success;
+              resumed.failure += result.failure;
+              resumed.message = [...resumed.message, ...result.message];
+          }
+          return resumed;
+      });
 };
